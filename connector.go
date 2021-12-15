@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type server struct {
+type Server struct {
 	Address    string
 	Username   string
 	Password   string
@@ -27,8 +27,8 @@ type server struct {
 
 const timeout time.Duration = 5
 
-// NewServerWithCert create a server struct which connects server via id_rsa
-func NewServerWithCert(address, user string, port int, cert []byte) (*server, error) {
+// NewServerWithCert create a Server struct which connects Server via id_rsa
+func NewServerWithCert(address, user string, port int, cert []byte) (*Server, error) {
 	key, err := ssh.ParsePrivateKey(cert)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func NewServerWithCert(address, user string, port int, cert []byte) (*server, er
 		return nil, err
 	}
 
-	return &server{
+	return &Server{
 		Address:    address,
 		Username:   user,
 		Password:   "",
@@ -61,7 +61,7 @@ func NewServerWithCert(address, user string, port int, cert []byte) (*server, er
 }
 
 // ExecuteCommand returns command's stdout and stderr
-func (s *server) ExecuteCommand(command string) ([]byte, error) {
+func (s *Server) ExecuteCommand(command string) ([]byte, error) {
 	if command == "" {
 		return nil, errors.New("no command received")
 	}
@@ -73,7 +73,7 @@ func (s *server) ExecuteCommand(command string) ([]byte, error) {
 }
 
 // ExecuteCommands execute a sequence of commands without returns, it returns the first error that occurs
-func (s *server) ExecuteCommands(commands []string) error {
+func (s *Server) ExecuteCommands(commands []string) error {
 	if len(commands) == 0 {
 		return errors.New("no commands received")
 	}
@@ -87,7 +87,7 @@ func (s *server) ExecuteCommands(commands []string) error {
 }
 
 // SetCrontab set user's crontab by using a file
-func (s *server) SetCrontab(filepath string) error {
+func (s *Server) SetCrontab(filepath string) error {
 	dstPath, _ := s.ExecuteCommand("cd;pwd")
 	tempPath := strings.Trim(string(dstPath), "\n")
 	err := s.UploadFile(filepath, tempPath)
@@ -105,7 +105,7 @@ func (s *server) SetCrontab(filepath string) error {
 }
 
 // CheckCrontab see user's current crontab
-func (s *server) CheckCrontab() ([]byte, error) {
+func (s *Server) CheckCrontab() ([]byte, error) {
 	res, err := s.ExecuteCommand("crontab -l")
 	if err != nil {
 		if string(bytes.TrimSpace(res)) != "no crontab for mobile" {
@@ -117,7 +117,7 @@ func (s *server) CheckCrontab() ([]byte, error) {
 }
 
 // CleanCrontab clean user's whole crontab
-func (s *server) CleanCrontab() error {
+func (s *Server) CleanCrontab() error {
 	res, err := s.ExecuteCommand("crontab -r")
 	if err != nil {
 		if string(bytes.TrimSpace(res)) != "no crontab for mobile" {
@@ -129,7 +129,7 @@ func (s *server) CleanCrontab() error {
 }
 
 // RegisterService upload local .service file to server and register it via systemd
-func (s *server) RegisterService(filePath string) error {
+func (s *Server) RegisterService(filePath string) error {
 	dstPath, _ := s.ExecuteCommand("cd;pwd")
 	tempPath := strings.Trim(string(dstPath), "\n")
 	serviceName := strings.Trim(path.Base(filePath), ".service")
@@ -150,7 +150,7 @@ func (s *server) RegisterService(filePath string) error {
 }
 
 // StartService starts a specific service via systemd
-func (s *server) StartService(serviceName string) error {
+func (s *Server) StartService(serviceName string) error {
 	_, err := s.ExecuteCommand("sudo systemctl start " + serviceName)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func (s *server) StartService(serviceName string) error {
 }
 
 // StopService stops a specific service via systemd
-func (s *server) StopService(serviceName string) error {
+func (s *Server) StopService(serviceName string) error {
 	_, err := s.ExecuteCommand("sudo systemctl stop " + serviceName)
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func (s *server) StopService(serviceName string) error {
 }
 
 // RestartService restarts a specific service via systemd
-func (s *server) RestartService(serviceName string) error {
+func (s *Server) RestartService(serviceName string) error {
 	_, err := s.ExecuteCommand("sudo systemctl restart " + serviceName)
 	if err != nil {
 		return err
@@ -177,7 +177,7 @@ func (s *server) RestartService(serviceName string) error {
 }
 
 // UploadFile upload file to dstPath
-func (s *server) UploadFile(srcFilePath, dstPath string) error {
+func (s *Server) UploadFile(srcFilePath, dstPath string) error {
 	if _, err := os.Stat(srcFilePath); err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (s *server) UploadFile(srcFilePath, dstPath string) error {
 }
 
 // UploadDir upload files in srcDirPath to dstPath recursively
-func (s *server) UploadDir(srcDirPath, dstPath string) error {
+func (s *Server) UploadDir(srcDirPath, dstPath string) error {
 	localFiles, err := ioutil.ReadDir(srcDirPath)
 	if err != nil {
 		return err
@@ -271,7 +271,7 @@ func (s *server) UploadDir(srcDirPath, dstPath string) error {
 }
 
 // DownloadFile downloads file from remoteDirPath, store in localPath
-func (s *server) DownloadFile(srcFilePath, dstPath string) error {
+func (s *Server) DownloadFile(srcFilePath, dstPath string) error {
 	if _, err := s.SFTPClient.Stat(srcFilePath); err != nil {
 		if os.IsNotExist(err) {
 			return errors.New("remote file does not exist")
@@ -325,20 +325,20 @@ func (s *server) DownloadFile(srcFilePath, dstPath string) error {
 	return nil
 }
 
-func (s *server) SetFirewall() (string, error) {
+func (s *Server) SetFirewall() (string, error) {
 	// todo
 	return "", nil
 }
 
 // CalcRemoteFileMD5 returns remote file's md5
-func (s *server) CalcRemoteFileMD5(remoteFilePath string) (string, error) {
+func (s *Server) CalcRemoteFileMD5(remoteFilePath string) (string, error) {
 	result, _ := s.ExecuteCommand("md5sum " + remoteFilePath + "| awk '{print $1}'")
 	var md5str = strings.Trim(string(result), " \n")
 	return md5str, nil
 }
 
 // Close closes server's sshClient and sftpClient
-func (s *server) Close() error {
+func (s *Server) Close() error {
 	err := s.SFTPClient.Close()
 	if err != nil {
 		return err
